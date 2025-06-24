@@ -1,0 +1,16 @@
+Universe        = vanilla
+Executable      = exec.sh
+
+Arguments       = $(Process)
+
+# Should_Transfer_Files = YES
+# Transfer_Input_Files  = evolution_jet_bins.cc, coordinateTools.h, binning.h
+
+# Transfer_Output_Files = parton_jet_$(Process).root
+
+Log              = logs/condor_$(Process).log
+Output           = logs/condor_$(Process).out
+Error            = logs/condor_$(Process).err
++MaxRuntime =1800
+
+Queue 200
