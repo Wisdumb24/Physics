@@ -15,6 +15,8 @@
 
 using namespace std;
 
+//C:\Users\david\OneDrive\Desktop\Rice-Physics\Eccentricity-main
+
 //----------------------------------------------------------------------
 // Defining Data Structures
 //----------------------------------------------------------------------
@@ -112,35 +114,35 @@ int evolution() {
     TH2F *hDimTime = new TH2F("hDimTime", "Dimension vs time; t (fm/c); r (fm)", 40, 0, maxTime, 50, 0, 2);
     TH2F *hDenTime = new TH2F("hDenTime", "Density vs time; t (fm/c); density (fm^{-2})", 40, 0, maxTime, 200, 0, 200);
     
-    //------------------------------------------------------------------
-    //  Ψ2 / Δφ histograms  (early = bin-1 center, late = last-bin center)
-    //------------------------------------------------------------------
-    TH1F *hPsi2Early = new TH1F("hPsi2Early",
-        "Early #Psi_{2};#Psi_{2};counts", 50, -TMath::Pi()/2, TMath::Pi()/2);
-    TH1F *hPsi2Late  = new TH1F("hPsi2Late",
-        "Late #Psi_{2};#Psi_{2};counts", 50, -TMath::Pi()/2, TMath::Pi()/2);
+    // Ψ2 / Δφ histograms  (early = bin-1 center, late = last-bin center)
+    TH1F *hPsi2Early = new TH1F("hPsi2Early", "Early #Psi_{2};#Psi_{2};counts", 25, -TMath::Pi()/2, TMath::Pi()/2);
+    TH1F *hPsi2Late  = new TH1F("hPsi2Late", "Late #Psi_{2};#Psi_{2};counts", 50, -TMath::Pi()/2, TMath::Pi()/2);
 
-    TH1F *hPhiRelEarly = new TH1F("hPhiRelEarly",
-        "#phi-#Psi_{2} (early);#Delta#phi;counts",
-        100, -TMath::Pi(), TMath::Pi());
-    TH1F *hPhiRelLate  = new TH1F("hPhiRelLate",
-        "#phi-#Psi_{2} (late);#Delta#phi;counts",
-        100, -TMath::Pi(), TMath::Pi());
+    TH1F *hPhiRelEarly = new TH1F("hPhiRelEarly", "#phi-#Psi_{2} (early);#Delta#phi;counts", 50, -TMath::Pi(), TMath::Pi());
+    TH1F *hPhiRelLate  = new TH1F("hPhiRelLate", "#phi-#Psi_{2} (late);#Delta#phi;counts", 100, -TMath::Pi(), TMath::Pi());
 
-    TH2F *hPsi2VsMultEarly = new TH2F("hPsi2VsMultEarly",
-        "#Psi_{2} vs N (early);#Psi_{2};N_{partons}",
-        50, -TMath::Pi()/2, TMath::Pi()/2, 50, 0, 50);
-    TH2F *hPsi2VsMultLate  = new TH2F("hPsi2VsMultLate",
-        "#Psi_{2} vs N (late);#Psi_{2};N_{partons}",
-        50, -TMath::Pi()/2, TMath::Pi()/2, 50, 0, 50);
+    TH2F *hPsi2VsMultEarly = new TH2F("hPsi2VsMultEarly", "#Psi_{2} vs N (early);#Psi_{2};N_{partons}", 50, -TMath::Pi()/2, TMath::Pi()/2, 50, 0, 50);
+    TH2F *hPsi2VsMultLate  = new TH2F("hPsi2VsMultLate", "#Psi_{2} vs N (late);#Psi_{2};N_{partons}", 50, -TMath::Pi()/2, TMath::Pi()/2, 50, 0, 50);
 
-    TH2F *hPhiRelVsMultEarly = new TH2F("hPhiRelVsMultEarly",
-        "#phi-#Psi_{2} vs N (early);#Delta#phi;N_{partons}",
-        100, -TMath::Pi(), TMath::Pi(), 50, 0, 50);
-    TH2F *hPhiRelVsMultLate  = new TH2F("hPhiRelVsMultLate",
-        "#phi-#Psi_{2} vs N (late);#Delta#phi;N_{partons}",
-        100, -TMath::Pi(), TMath::Pi(), 50, 0, 50);
+    TH2F *hPhiRelVsMultEarly = new TH2F("hPhiRelVsMultEarly", "#phi-#Psi_{2} vs N (early);#Delta#phi;N_{partons}", 100, -TMath::Pi(), TMath::Pi(), 50, 0, 50);
+    TH2F *hPhiRelVsMultLate  = new TH2F("hPhiRelVsMultLate", "#phi-#Psi_{2} vs N (late);#Delta#phi;N_{partons}",100, -TMath::Pi(), TMath::Pi(), 50, 0, 50);
 
+    //make sure histograms are empty
+    // Reset histograms in case they persist from a previous run
+    hTime->Reset();
+    hMultTime->Reset();
+    hEccTime->Reset();
+    hDimTime->Reset();
+    hDenTime->Reset();
+
+    hPsi2Early->Reset();
+    hPsi2Late->Reset();
+    hPhiRelEarly->Reset();
+    hPhiRelLate->Reset();
+    hPsi2VsMultEarly->Reset();
+    hPsi2VsMultLate->Reset();
+    hPhiRelVsMultEarly->Reset();
+    hPhiRelVsMultLate->Reset();
 
     // Style Settings
     gStyle->SetOptStat(0);
@@ -221,11 +223,14 @@ int evolution() {
             }
         }
         
+        //Print event information
+        /*
         std::cout << "Event " << ie
-                  << ":  partons=" << partons.size()
-                  << ", jets="    << jets.size() <<"\n";
-            //      << ", first jet mult="    << jets[0].genJetChargedMultiplicity
-            //      <<", second jet mult="    << jets[1].genJetChargedMultiplicity<<"\n";
+        << ":  partons=" << partons.size()
+        << ", jets="    << jets.size() <<"\n";
+        << ", first jet mult="    << jets[0].genJetChargedMultiplicity
+        <<", second jet mult="    << jets[1].genJetChargedMultiplicity<<"\n";
+        */
 
         //----------------------------------------------------------------------
         // Coordinate Transformation: Lab -> Jet Frame
@@ -300,7 +305,7 @@ auto fillPsi2Set = [&](double tTarget,
     for (auto &kv : partonsByJet)
     {
         const std::vector<int> &idxs = kv.second;
-        if (idxs.size() <= 2) continue;        // skip jets with ≤2 partons
+        if (idxs.size() <= 2) continue;        // skip jets with ≤1 partons
 
         // ------------ propagate & centroid ------------------
         double sumE=0, sumx=0, sumy=0;
@@ -335,18 +340,22 @@ auto fillPsi2Set = [&](double tTarget,
         double psi2 = 0.5 * atan2(Im, Re);
         int    mult = idxs.size();
 
-        // ------------ fill histograms -----------------------
+        //if (fabs(psi2)>=0.075) continue;
+        //cout << "psi2 = " << psi2 << endl;
+        
         hPsi2->Fill(psi2);
         hPsi2VsMult->Fill(psi2, mult);
 
         for (int idx : idxs) {
             const auto &P = partons[idx];
             if (P.t > tTarget) continue;
-            double dt = tTarget - P.t;
-            double x  = P.jet_par_x + dt * P.jet_par_px / P.e;
-            double y  = P.jet_par_y + dt * P.jet_par_py / P.e;
-            double phi = atan2(y-ym, x-xm);
-            double dphi = TVector2::Phi_mpi_pi(phi - psi2);
+            //double dt = tTarget - P.t;
+            //double x  = P.jet_par_x + dt * P.jet_par_px / P.e;
+            //double y  = P.jet_par_y + dt * P.jet_par_py / P.e;
+            //double phi = atan2(y-ym, x-xm);
+            //double dphi = TVector2::Phi_mpi_pi(phi - psi2);
+            double phi_mom = atan2(P.jet_par_py, P.jet_par_px);  // momentum φ in jet frame
+            double dphi    = TVector2::Phi_mpi_pi(phi_mom - psi2);  // use phi_mom here
             hPhiRel->Fill(dphi);
             hPhiRelVsMult->Fill(dphi, mult);
         }
@@ -366,8 +375,8 @@ auto fillPsi2Set = [&](double tTarget,
 
         const int  earlyBin = 21;
         const int  lateBin  = hMultTime->GetNbinsX();
-        const double tEarly = hMultTime->GetXaxis()->GetBinCenter(earlyBin);   // 0.05 fm/c
-        const double tLate  = hMultTime->GetXaxis()->GetBinCenter(lateBin);    // 3.95 fm/c
+        const double tEarly = hMultTime->GetXaxis()->GetBinCenter(earlyBin);   
+        const double tLate  = hMultTime->GetXaxis()->GetBinCenter(lateBin);   
 
         fillPsi2Set(tEarly, hPsi2Early, hPhiRelEarly, hPsi2VsMultEarly, hPhiRelVsMultEarly);
         fillPsi2Set(tLate,  hPsi2Late,  hPhiRelLate,  hPsi2VsMultLate,  hPhiRelVsMultLate);
@@ -408,7 +417,7 @@ auto fillPsi2Set = [&](double tTarget,
                 hMultTime->Fill(t, nPartons);
 
                 // eccentricity calculation, only proceed if it is well-defined
-                if (nPartons < 3) continue;
+                if (nPartons < 2) continue;
 
                 double xm = sumx / sumE;
                 double ym = sumy / sumE;
@@ -454,6 +463,7 @@ auto fillPsi2Set = [&](double tTarget,
     // Draw and Save Plots
     //----------------------------------------------------------------------
 
+    /*
     TCanvas *cTime = new TCanvas("cTime", "", 800, 600);
     //cTime->SetLogy();
     hTime->Draw();
@@ -474,6 +484,8 @@ auto fillPsi2Set = [&](double tTarget,
     pMultTime->Draw("E");
     c1->SaveAs("Zeit/JetPartonMultiplicityTime_Profile.png");
 
+    */
+
     TCanvas *cEccTime = new TCanvas("cEccTime", "Eccentricity vs Time", 800, 600);
     gStyle->SetOptStat(0);
     hEccTime->Draw("COLZ");
@@ -488,6 +500,8 @@ auto fillPsi2Set = [&](double tTarget,
     pEccTime->GetYaxis()->SetTitle("<#epsilon_{2}>");
     pEccTime->Draw("E");
     c2->SaveAs("Zeit/EccentricityTime_Profile.png");
+
+    /*
 
     TCanvas *cDimTime = new TCanvas("cDimTime", "Size vs Time", 800, 600);
     gStyle->SetOptStat(0);
@@ -521,13 +535,19 @@ auto fillPsi2Set = [&](double tTarget,
     pDenTime->Draw("E");
     c4->SaveAs("Zeit/DensityTime_Profile.png");
 
+    */
+
     // -------------------------------------------------------------
     //  Ψ2 + Δφ  plots  (EARLY)
     // -------------------------------------------------------------
     TCanvas *cE1 = new TCanvas("cE1", "Psi2 distribution (early)", 800, 600);
-    hPsi2Early->SetLineWidth(2);
+    //hPsi2Early->SetLineWidth(2);
+    //hPsi2Early->GetYaxis()->SetRangeUser(200, 1200);
+    int mid   = hPsi2Early->FindBin(0.00001);          // bin that contains Ψ₂ ≈ 0
+    int count = hPsi2Early->GetBinContent(mid);
+    std::cout << mid << " " << "Central bin content = "<< count  << '\n';
     hPsi2Early->Draw("HIST");
-    cE1->SaveAs("Zeit/E_Psi2_distribution.png");
+    cE1->SaveAs("Zeit/E_Psi2_distribution_13.png");
 
     TCanvas *cE2 = new TCanvas("cE2", "Phi - Psi2 (early)", 800, 600);
     hPhiRelEarly->SetLineWidth(2);
@@ -546,6 +566,8 @@ auto fillPsi2Set = [&](double tTarget,
     // -------------------------------------------------------------
     //  Ψ2 + Δφ  plots  (LATE)
     // -------------------------------------------------------------
+    
+    /*
     TCanvas *cL3 = new TCanvas("cL3", "Ψ₂ (late)", 800, 600);
     hPsi2Late->SetLineWidth(2);
     hPsi2Late->Draw("HIST");
@@ -564,8 +586,8 @@ auto fillPsi2Set = [&](double tTarget,
     TCanvas *cL2=new TCanvas("cL2","",800,600);
     hPhiRelVsMultLate->Draw("COLZ");
     cL2->SaveAs("Zeit/L_PhiMinusPsi2_vs_Multiplicity.png");
+    */
 
-
-    //file->Close();
+    file->Close();
     return 0;
 }
