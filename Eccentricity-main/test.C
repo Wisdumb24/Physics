@@ -4,7 +4,7 @@
 #include "coordinateTools.h"
 
 
-const double maxTime = 4;
+const double maxTime = 10;
 
 TH2D *hMultTime = new TH2D("hMultTime", "Jet parton multiplicity vs time; t (fm/c); N_{parton}", 40, 0, maxTime, 50, 0, 50);
 TH1D *hPsi2Early = new TH1D("hPsi2Early123", "Early #Psi_{2};#Psi_{2};counts", 25, -TMath::Pi()/2, TMath::Pi()/2);
@@ -14,6 +14,7 @@ TH1D* hPsi2;
 TH1D *hPhiRelEarly = new TH1D("hPhiRelEarly", "#phi-#Psi_{2} (early);#Delta#phi;counts", 50, -TMath::Pi(), TMath::Pi());
 TH2D* hEccVsTau = new TH2D("hEccVsTau", "#varepsilon_{2} vs proper time; #tau (fm/c); #varepsilon_{2}", 40, 0, maxTime, 50, 0, 1);
 TH1D* hEccRMSvsTau = new TH1D("hEccRMSvsTau", "RMS #varepsilon_{2} vs #tau;#tau (fm/c); #varepsilon_{2}^{RMS}", 40, 0, maxTime);  // same binning as hEccVsTau
+TH1D* hV2Early = new TH1D("hV2Early", "v_{2} at #tau = 2 fm/c; v_{2}; counts", 50, 0, 1);
 
 struct Parton {
     int   pdgid;
@@ -328,6 +329,71 @@ void fillEccVsTau(
     }
 }
 
+void fillV2AtTau(
+    double tauTarget,
+    TH1D* hV2,
+    std::map<int, std::vector<int>>& partonsByJet,
+    std::vector<Parton>& partons
+)
+{
+    for (const auto& [jetID, idxs] : partonsByJet) {
+        if (idxs.size() < 2) continue;
+
+        // Compute event plane Ψ₂ using spatial eccentricity
+        double sumE = 0, sumx = 0, sumy = 0;
+        for (int idx : idxs) {
+            const auto& P = partons[idx];
+            if (P.tau > tauTarget) continue;
+            double dt = tauTarget - P.tau;
+            double x = P.jet_par_x + dt * P.jet_par_px / P.e;
+            double y = P.jet_par_y + dt * P.jet_par_py / P.e;
+            sumE += P.e;
+            sumx += P.e * x;
+            sumy += P.e * y;
+        }
+        if (sumE == 0) continue;
+
+        double xm = sumx / sumE;
+        double ym = sumy / sumE;
+
+        double Re = 0, Im = 0;
+        for (int idx : idxs) {
+            const auto& P = partons[idx];
+            if (P.tau > tauTarget) continue;
+            double dt = tauTarget - P.tau;
+            double x = P.jet_par_x + dt * P.jet_par_px / P.e;
+            double y = P.jet_par_y + dt * P.jet_par_py / P.e;
+            double dx = x - xm;
+            double dy = y - ym;
+            double r2 = dx * dx + dy * dy;
+            double phi = atan2(dy, dx);
+            double w = P.e * r2;
+            Re += w * cos(2 * phi);
+            Im += w * sin(2 * phi);
+        }
+
+        if (Re == 0 && Im == 0) continue;
+
+        double psi2 = 0.5 * atan2(Im, Re);
+
+        // Now compute v₂ using momenta relative to Ψ₂
+        double sumV2 = 0;
+        int n = 0;
+        for (int idx : idxs) {
+            const auto& P = partons[idx];
+            if (P.tau > tauTarget) continue;
+            double phi_mom = atan2(P.jet_par_py, P.jet_par_px);
+            sumV2 += cos(2 * (phi_mom - psi2));
+            ++n;
+        }
+
+        if (n > 0) {
+            double v2 = sumV2 / n;
+            hV2->Fill(v2);
+        }
+    }
+}
+
 void test()
 {
 	const int  earlyBin = 21;
@@ -384,10 +450,14 @@ void test()
 			tauEarly, hPsi2Early, hPhiRelEarly, hPsi2VsMultEarly, hPhiRelVsMultEarly,
 			partonsByJet, partons
 		);
+
+		fillV2AtTau(tauEarly, hV2Early, partonsByJet, partons);
+
 	}
 
 	computeEccentricityRMSvsTau(hEccVsTau, hEccRMSvsTau);
 
+	/*
 	TCanvas *cE1 = new TCanvas();
 	hPsi2Early->SetLineWidth(2);
 	hPsi2Early->GetYaxis()->SetRangeUser(200, 1200);
@@ -415,6 +485,7 @@ void test()
 	TCanvas* cPsi2VsN = new TCanvas();
 	hPsi2VsMultEarly->Draw("COLZ");
 	cPsi2VsN->SaveAs("Psi2VsMultEarly.png");
+	*/
 
 	// Eccentricity vs time
 	//TCanvas* cEccT = new TCanvas();
@@ -426,6 +497,12 @@ void test()
 	hEccRMSvsTau->SetLineWidth(2);
 	hEccRMSvsTau->Draw("HIST");
 	cEccRMS->SaveAs("EccentricityRMSvsTau.png");
+
+	TCanvas* cV2 = new TCanvas("cV2", "v2 at tau = 2 fm/c");
+	hV2Early->SetLineWidth(2);
+	hV2Early->SetLineColor(kBlue);
+	hV2Early->Draw();
+	cV2->SaveAs("V2Early.png");
 
 	inFile->Close();
 	delete tree;
