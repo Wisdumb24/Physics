@@ -1,5 +1,3 @@
-//C:\Users\david\OneDrive\Desktop\Rice-Physics\Eccentricity-main
-
 #include "trackTree.C"
 #include "coordinateTools.h"
 
@@ -12,8 +10,8 @@ TH2D *hPsi2VsMultEarly = new TH2D("hPsi2VsMultEarly", "#Psi_{2} vs N (early);#Ps
 TH2D *hPhiRelVsMultEarly = new TH2D("hPhiRelVsMultEarly", "#phi-#Psi_{2} vs N (early);#Delta#phi;N_{partons}", 100, -TMath::Pi(), TMath::Pi(), 50, 0, 50);
 TH1D* hPsi2;
 TH1D *hPhiRelEarly = new TH1D("hPhiRelEarly", "#phi-#Psi_{2} (early);#Delta#phi;counts", 50, -TMath::Pi(), TMath::Pi());
-TH2D* hEccVsTau = new TH2D("hEccVsTau", "#varepsilon_{2} vs proper time; #tau (fm/c); #varepsilon_{2}", 40, 0, maxTime, 50, 0, 1);
-TH1D* hEccRMSvsTau = new TH1D("hEccRMSvsTau", "RMS #varepsilon_{2} vs #tau;#tau (fm/c); #varepsilon_{2}^{RMS}", 40, 0, maxTime);  // same binning as hEccVsTau
+TH2D* hEccVsTime = new TH2D("hEccVsTime", "#varepsilon_{2} vs time; t (fm/c); #varepsilon_{2}", 40, 0, maxTime, 50, 0, 1);
+
 
 struct Parton {
     int   pdgid;
@@ -42,7 +40,7 @@ struct Jet {
 
 
 void fillPsi2Set(
-    double tTarget,
+    double tauTarget,
     TH1D* hPsi2, TH1D* hPhiRel,
     TH2D* hPsi2VsMult, TH2D* hPhiRelVsMult,
     std::map<int, std::vector<int>>& partonsByJet,
@@ -52,12 +50,12 @@ void fillPsi2Set(
     for (const auto& [jetID, idxs] : partonsByJet) {
         if (idxs.size() < 2) continue; // Skip jets with <2 partons
 
-        // --- Compute centroid in jet frame at tTarget ---
+        // --- Compute centroid in jet frame at tauTarget ---
         double sumE = 0, sumx = 0, sumy = 0;
         for (int idx : idxs) {
             const auto& P = partons[idx];
-            if (P.tau > tTarget) continue;
-            double dt = tTarget - P.tau;
+            if (P.tau > tauTarget) continue;
+            double dt = tauTarget - P.t;
             double x = P.jet_par_x + dt * P.jet_par_px / P.e;
             double y = P.jet_par_y + dt * P.jet_par_py / P.e;
             sumE += P.e;
@@ -74,8 +72,8 @@ void fillPsi2Set(
 
         for (int idx : idxs) {
             const auto& P = partons[idx];
-            if (P.tau > tTarget) continue;
-            double dt = tTarget - P.tau;
+            if (P.tau > tauTarget) continue;
+            double dt = tauTarget - P.t;
             double x = P.jet_par_x + dt * P.jet_par_px / P.e;
             double y = P.jet_par_y + dt * P.jet_par_py / P.e;
             double dx = x - xm;
@@ -98,7 +96,7 @@ void fillPsi2Set(
         // --- Fill Δφ histograms for each parton ---
         for (int idx : idxs) {
             const auto& P = partons[idx];
-            if (P.tau > tTarget) continue;
+            if (P.t > tauTarget) continue;
             double phi_mom = atan2(P.jet_par_py, P.jet_par_px); // momentum φ in jet frame
             double dphi = TVector2::Phi_mpi_pi(phi_mom-psi2);
             hPhiRel->Fill(dphi);
@@ -145,6 +143,10 @@ void readPartons(
 		p.y     = (double)tree->par_y->at(j);
 		p.z     = (double)tree->par_z->at(j);
 		p.t     = (double)tree->par_t->at(j);
+        
+        double z2 = p.jet_par_z * p.jet_par_z;
+        p.tau = (p.t * p.t > z2) ? sqrt(p.t * p.t - z2) : 0.0;
+
 
 		// Calculate parton kinematics
 		p.pt   = sqrt(p.px * p.px + p.py * p.py);
@@ -246,42 +248,16 @@ void groupByJet(
 }
 
 
-void computeEccentricityRMSvsTau(
-    TH2D* hEccVsTau,
-    TH1D* hEccRMSvsTau
-)
-{
-    int nBinsX = hEccVsTau->GetNbinsX();
-
-    for (int i = 1; i <= nBinsX; ++i) {
-        double sum = 0;
-        double count = 0;
-
-        for (int j = 1; j <= hEccVsTau->GetNbinsY(); ++j) {
-            double e2 = hEccVsTau->GetYaxis()->GetBinCenter(j);
-            double weight = hEccVsTau->GetBinContent(i, j);
-            sum += weight * e2;
-            count += weight;
-        }
-
-        if (count > 0) {
-            double meanSq = sum / count;
-            double rms = sqrt(meanSq);
-            hEccRMSvsTau->SetBinContent(i, rms);
-        }
-    }
-}
-
-void fillEccVsTau(
-    TH2D* hEccVsTau,
+void fillEccVsTime(
+    TH2D* hEccVsTime,
     std::map<int, std::vector<int>>& partonsByJet,
     std::vector<Parton>& partons
 )
 {
-    const int nBins = hEccVsTau->GetNbinsX();
+    const int nBins = hEccVsTime->GetNbinsX();
 
     for (int it = 1; it <= nBins; ++it) {
-        double tauTarget = hEccVsTau->GetXaxis()->GetBinCenter(it);
+        double tauTarget = hEccVsTime->GetXaxis()->GetBinCenter(it);
 
         for (const auto& [jetID, idxs] : partonsByJet) {
             if (idxs.size() <= 2) continue;
@@ -291,7 +267,7 @@ void fillEccVsTau(
             for (int idx : idxs) {
                 const auto& P = partons[idx];
                 if (P.tau > tauTarget) continue;
-                double dt = tauTarget - P.tau;
+                double dt = tauTarget - P.t;
                 double x = P.jet_par_x + dt * P.jet_par_px / P.e;
                 double y = P.jet_par_y + dt * P.jet_par_py / P.e;
                 sumE += P.e;
@@ -308,7 +284,7 @@ void fillEccVsTau(
             for (int idx : idxs) {
                 const auto& P = partons[idx];
                 if (P.tau > tauTarget) continue;
-                double dt = tauTarget - P.tau;
+                double dt = tauTarget - P.t;
                 double x = P.jet_par_x + dt * P.jet_par_px / P.e;
                 double y = P.jet_par_y + dt * P.jet_par_py / P.e;
                 double dx = x - xm;
@@ -323,17 +299,16 @@ void fillEccVsTau(
             if (Wtot == 0) continue;
 
             double eps2 = sqrt(Re * Re + Im * Im) / Wtot;
-            hEccVsTau->Fill(tauTarget, eps2 * eps2);
+            hEccVsTime->Fill(tauTarget, eps2);
         }
     }
 }
 
-void test()
+void propertime()
 {
 	const int  earlyBin = 21;
 	const int  lateBin  = hMultTime->GetNbinsX();
-	//const double tEarly = hMultTime->GetXaxis()->GetBinCenter(earlyBin);  
-	const double tauEarly = 2.0; // Proper time in fm/c 
+	const double tauEarly = 2.0; // Proper time   
 	const double tLate  = hMultTime->GetXaxis()->GetBinCenter(lateBin);
 
 	TFile* inFile = TFile::Open("pp_parton_cascade_1.root", "READ");
@@ -370,14 +345,8 @@ void test()
 		matchPartonsToJets(partons, jets);
 		transformToJetFrame(partons, jets);
 
-		for (auto& p : partons) {
-    		double z2 = p.jet_par_z * p.jet_par_z;
-    		p.tau = (p.t * p.t > z2) ? sqrt(p.t * p.t - z2) : 0.0;
-		}
-
-
 		groupByJet(partons, partonsByJet);
-		fillEccVsTau(hEccVsTau, partonsByJet, partons);
+		fillEccVsTime(hEccVsTime, partonsByJet, partons);
 
 		// fill histograms
 		fillPsi2Set(
@@ -385,8 +354,6 @@ void test()
 			partonsByJet, partons
 		);
 	}
-
-	computeEccentricityRMSvsTau(hEccVsTau, hEccRMSvsTau);
 
 	TCanvas *cE1 = new TCanvas();
 	hPsi2Early->SetLineWidth(2);
@@ -417,15 +384,11 @@ void test()
 	cPsi2VsN->SaveAs("Psi2VsMultEarly.png");
 
 	// Eccentricity vs time
-	//TCanvas* cEccT = new TCanvas();
-	//hEccVsTau->GetYaxis()->SetRangeUser(0, 10);  // Set Y-axis range from 0 to 0.5
-	//hEccVsTau->Draw("COLZ");
-	//cEccT->SaveAs("EccentricityVsTau.png");
+	TCanvas* cEccT = new TCanvas();
+	hEccVsTime->GetYaxis()->SetRangeUser(0, 10);  // Set Y-axis range from 0 to 0.5
+	hEccVsTime->Draw("COLZ");
+	cEccT->SaveAs("EccentricityVsTime.png");
 
-	TCanvas* cEccRMS = new TCanvas("cEccRMS", "RMS Eccentricity vs Tau");
-	hEccRMSvsTau->SetLineWidth(2);
-	hEccRMSvsTau->Draw("HIST");
-	cEccRMS->SaveAs("EccentricityRMSvsTau.png");
 
 	inFile->Close();
 	delete tree;
