@@ -14,7 +14,7 @@ TH1D* hPsi2;
 TH1D *hPhiRelEarly = new TH1D("hPhiRelEarly", "#phi-#Psi_{2} (early);#Delta#phi;counts", 50, -TMath::Pi(), TMath::Pi());
 TH2D* hEccVsTau = new TH2D("hEccVsTau", "#varepsilon_{2} vs proper time; #tau (fm/c); #varepsilon_{2}", 40, 0, maxTime, 50, 0, 1);
 TH1D* hEccRMSvsTau = new TH1D("hEccRMSvsTau", "RMS #varepsilon_{2} vs #tau;#tau (fm/c); #varepsilon_{2}^{RMS}", 40, 0, maxTime);  // same binning as hEccVsTau
-TH1D* hV2Early = new TH1D("hV2Early", "v_{2} at #tau = 2 fm/c; v_{2}; counts", 50, 0, 1);
+TH1D* hV2Early = new TH1D("hV2Early", "v_{2} at #tau = 2 fm/c; v_{2}; counts", 50, -1, 1);
 
 struct Parton {
     int   pdgid;
