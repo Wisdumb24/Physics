@@ -6,15 +6,21 @@
 
 const double maxTime = 10;
 
+//initialize parton histograms
 TH2D *hMultTime = new TH2D("hMultTime", "Jet parton multiplicity vs time; t (fm/c); N_{parton}", 40, 0, maxTime, 50, 0, 50);
 TH1D *hPsi2Early = new TH1D("hPsi2Early123", "Early #Psi_{2};#Psi_{2};counts", 25, -TMath::Pi()/2, TMath::Pi()/2);
 TH2D *hPsi2VsMultEarly = new TH2D("hPsi2VsMultEarly", "#Psi_{2} vs N (early);#Psi_{2};N_{partons}", 50, -TMath::Pi()/2, TMath::Pi()/2, 50, 0, 50);
 TH2D *hPhiRelVsMultEarly = new TH2D("hPhiRelVsMultEarly", "#phi-#Psi_{2} vs N (early);#Delta#phi;N_{partons}", 100, -TMath::Pi(), TMath::Pi(), 50, 0, 50);
 TH1D* hPsi2;
 TH1D *hPhiRelEarly = new TH1D("hPhiRelEarly", "#phi-#Psi_{2} (early);#Delta#phi;counts", 50, -TMath::Pi(), TMath::Pi());
+
+//initialize v2 and eccentricity histograms
 TH2D* hEccVsTau = new TH2D("hEccVsTau", "#varepsilon_{2} vs proper time; #tau (fm/c); #varepsilon_{2}", 40, 0, maxTime, 50, 0, 1);
 TH1D* hEccRMSvsTau = new TH1D("hEccRMSvsTau", "RMS #varepsilon_{2} vs #tau;#tau (fm/c); #varepsilon_{2}^{RMS}", 40, 0, maxTime);  // same binning as hEccVsTau
 TH1D* hV2Early = new TH1D("hV2Early", "v_{2} at #tau = 2 fm/c; v_{2}; counts", 50, -1, 1);
+TH2D* hV2VsTau = new TH2D("hV2VsTau", "v_{2}^{2} vs proper time; #tau (fm/c); v_{2}^{2}", 40, 0, maxTime, 50, 0, 1);
+TH1D* hV2RMSvsTau = new TH1D("hV2RMSvsTau", "RMS v_{2} vs #tau;#tau (fm/c); v_{2}^{RMS}", 40, 0, maxTime);
+TH2D* hV2vsEcc = new TH2D("hV2vsEcc", "v_{2} vs #varepsilon_{2};#varepsilon_{2};v_{2}", 50, 0, 1.2, 50, -1, 1.2);
 
 struct Parton {
     int   pdgid;
@@ -182,7 +188,7 @@ void matchPartonsToJets(
 	}
 }
 
-// Coordinate Transformation: Lab -> Jet Frame
+// Coordinate Transformation from Lab to Jet Frame
 void transformToJetFrame(
 	vector<Parton>& partons,
 	const vector<Jet>& jets
@@ -246,33 +252,7 @@ void groupByJet(
 	}
 }
 
-
-void computeEccentricityRMSvsTau(
-    TH2D* hEccVsTau,
-    TH1D* hEccRMSvsTau
-)
-{
-    int nBinsX = hEccVsTau->GetNbinsX();
-
-    for (int i = 1; i <= nBinsX; ++i) {
-        double sum = 0;
-        double count = 0;
-
-        for (int j = 1; j <= hEccVsTau->GetNbinsY(); ++j) {
-            double e2 = hEccVsTau->GetYaxis()->GetBinCenter(j);
-            double weight = hEccVsTau->GetBinContent(i, j);
-            sum += weight * e2;
-            count += weight;
-        }
-
-        if (count > 0) {
-            double meanSq = sum / count;
-            double rms = sqrt(meanSq);
-            hEccRMSvsTau->SetBinContent(i, rms);
-        }
-    }
-}
-
+// compute eccentricity vs tau distribution
 void fillEccVsTau(
     TH2D* hEccVsTau,
     std::map<int, std::vector<int>>& partonsByJet,
@@ -329,6 +309,34 @@ void fillEccVsTau(
     }
 }
 
+// Compute RMS of eccentricity vs tau
+void computeEccentricityRMSvsTau(
+    TH2D* hEccVsTau,
+    TH1D* hEccRMSvsTau
+)
+{
+    int nBinsX = hEccVsTau->GetNbinsX();
+
+    for (int i = 1; i <= nBinsX; ++i) {
+        double sum = 0;
+        double count = 0;
+
+        for (int j = 1; j <= hEccVsTau->GetNbinsY(); ++j) {
+            double e2 = hEccVsTau->GetYaxis()->GetBinCenter(j);
+            double weight = hEccVsTau->GetBinContent(i, j);
+            sum += weight * e2;
+            count += weight;
+        }
+
+        if (count > 0) {
+            double meanSq = sum / count;
+            double rms = sqrt(meanSq);
+            hEccRMSvsTau->SetBinContent(i, rms);
+        }
+    }
+}
+
+// compute v2 distribution at tau tauTarget
 void fillV2AtTau(
     double tauTarget,
     TH1D* hV2,
@@ -376,7 +384,7 @@ void fillV2AtTau(
 
         double psi2 = 0.5 * atan2(Im, Re);
 
-        // Now compute v₂ using momenta relative to Ψ₂
+        //Compute v₂ using momenta relative to Ψ₂
         double sumV2 = 0;
         int n = 0;
         for (int idx : idxs) {
@@ -391,6 +399,171 @@ void fillV2AtTau(
             double v2 = sumV2 / n;
             hV2->Fill(v2);
         }
+    }
+}
+
+//V2 vs tau functions
+void fillV2VsTau(
+    TH2D* hV2VsTau,
+    std::map<int, std::vector<int>>& partonsByJet,
+    std::vector<Parton>& partons
+)
+{
+    const int nBins = hV2VsTau->GetNbinsX();
+
+    for (int it = 1; it <= nBins; ++it) {
+        double tauTarget = hV2VsTau->GetXaxis()->GetBinCenter(it);
+
+        for (const auto& [jetID, idxs] : partonsByJet) {
+            if (idxs.size() < 2) continue;
+
+            // Compute Ψ₂
+            double sumE = 0, sumx = 0, sumy = 0;
+            for (int idx : idxs) {
+                const auto& P = partons[idx];
+                if (P.tau > tauTarget) continue;
+                double dt = tauTarget - P.tau;
+                double x = P.jet_par_x + dt * P.jet_par_px / P.e;
+                double y = P.jet_par_y + dt * P.jet_par_py / P.e;
+                sumE += P.e;
+                sumx += P.e * x;
+                sumy += P.e * y;
+            }
+            if (sumE == 0) continue;
+
+            double xm = sumx / sumE;
+            double ym = sumy / sumE;
+
+            double Re = 0, Im = 0;
+            for (int idx : idxs) {
+                const auto& P = partons[idx];
+                if (P.tau > tauTarget) continue;
+                double dt = tauTarget - P.tau;
+                double x = P.jet_par_x + dt * P.jet_par_px / P.e;
+                double y = P.jet_par_y + dt * P.jet_par_py / P.e;
+                double dx = x - xm;
+                double dy = y - ym;
+                double phi = atan2(dy, dx);
+                double r2 = dx * dx + dy * dy;
+                double w = P.e * r2;
+                Re += w * cos(2 * phi);
+                Im += w * sin(2 * phi);
+            }
+
+            if (Re == 0 && Im == 0) continue;
+
+            double psi2 = 0.5 * atan2(Im, Re);
+
+            double sumV2 = 0;
+            int n = 0;
+            for (int idx : idxs) {
+                const auto& P = partons[idx];
+                if (P.tau > tauTarget) continue;
+                double phi_mom = atan2(P.jet_par_py, P.jet_par_px);
+                sumV2 += cos(2 * (phi_mom - psi2));
+                ++n;
+            }
+
+            if (n > 0) {
+                double v2 = sumV2 / n;
+                hV2VsTau->Fill(tauTarget, v2 * v2);
+            }
+        }
+    }
+}
+
+//compute RMS of v2 vs tau
+void computeV2RMSvsTau(
+    TH2D* hV2VsTau,
+    TH1D* hV2RMSvsTau
+)
+{
+    int nBinsX = hV2VsTau->GetNbinsX();
+
+    for (int i = 1; i <= nBinsX; ++i) {
+        double sum = 0;
+        double count = 0;
+
+        for (int j = 1; j <= hV2VsTau->GetNbinsY(); ++j) {
+            double v2sq = hV2VsTau->GetYaxis()->GetBinCenter(j);
+            double weight = hV2VsTau->GetBinContent(i, j);
+            sum += weight * v2sq;
+            count += weight;
+        }
+
+        if (count > 0) {
+            double meanSq = sum / count;
+            double rms = sqrt(meanSq);
+            hV2RMSvsTau->SetBinContent(i, rms);
+        }
+    }
+}
+
+void fillV2VsEccAtTau(
+    double tauTarget,
+    TH2D* hV2vsEcc,
+    std::map<int, std::vector<int>>& partonsByJet,
+    std::vector<Parton>& partons
+)
+{
+    for (const auto& [jetID, idxs] : partonsByJet) {
+        if (idxs.size() < 2) continue;
+
+        // --- Compute spatial centroid ---
+        double sumE = 0, sumx = 0, sumy = 0;
+        for (int idx : idxs) {
+            const auto& P = partons[idx];
+            if (P.tau > tauTarget) continue;
+            double dt = tauTarget - P.tau;
+            double x = P.jet_par_x + dt * P.jet_par_px / P.e;
+            double y = P.jet_par_y + dt * P.jet_par_py / P.e;
+            sumE += P.e;
+            sumx += P.e * x;
+            sumy += P.e * y;
+        }
+        if (sumE == 0) continue;
+
+        double xm = sumx / sumE;
+        double ym = sumy / sumE;
+
+        // --- Eccentricity Q-vector ---
+        double Re = 0, Im = 0, Wtot = 0;
+        for (int idx : idxs) {
+            const auto& P = partons[idx];
+            if (P.tau > tauTarget) continue;
+            double dt = tauTarget - P.tau;
+            double x = P.jet_par_x + dt * P.jet_par_px / P.e;
+            double y = P.jet_par_y + dt * P.jet_par_py / P.e;
+            double dx = x - xm;
+            double dy = y - ym;
+            double r2 = dx * dx + dy * dy;
+            double phi = atan2(dy, dx);
+            double w = P.e * r2;
+            Re += w * cos(2 * phi);
+            Im += w * sin(2 * phi);
+            Wtot += w;
+        }
+
+        if (Wtot == 0) continue;
+
+        double eps2 = sqrt(Re * Re + Im * Im) / Wtot;
+        double psi2 = 0.5 * atan2(Im, Re);
+
+        // --- Compute v₂ ---
+        double sumV2 = 0;
+        int n = 0;
+        for (int idx : idxs) {
+            const auto& P = partons[idx];
+            if (P.tau > tauTarget) continue;
+            double phi_mom = atan2(P.jet_par_py, P.jet_par_px);
+            sumV2 += cos(2 * (phi_mom - psi2));
+            ++n;
+        }
+
+        if (n == 0) continue;
+
+        double v2 = sumV2 / n;
+        hV2vsEcc->Fill(eps2, v2);
     }
 }
 
@@ -451,12 +624,16 @@ void test()
 		);
 
 		fillV2AtTau(tauEarly, hV2Early, partonsByJet, partons);
+        fillV2VsTau(hV2VsTau, partonsByJet, partons);
+        fillV2VsEccAtTau(tauEarly, hV2vsEcc, partonsByJet, partons);
 
 	}
 
 	computeEccentricityRMSvsTau(hEccVsTau, hEccRMSvsTau);
+    computeV2RMSvsTau(hV2VsTau, hV2RMSvsTau);
 
 	/*
+    // Evenet plane distribution
 	TCanvas *cE1 = new TCanvas();
 	hPsi2Early->SetLineWidth(2);
 	hPsi2Early->GetYaxis()->SetRangeUser(200, 1200);
@@ -468,40 +645,53 @@ void test()
     //std::cout << mid << " " << "Central bin content = "<< count  << std::endl;
 	cE1->SaveAs("Psi2Early.png");
 
-	// φ_mom - Ψ₂ (Δφ) distribution
+	// Δφ distribution
 	TCanvas *cPhiRel = new TCanvas();
 	hPhiRelEarly->SetLineWidth(2);
 	hPhiRelEarly->SetLineColor(kBlue);
 	hPhiRelEarly->Draw();
 	cPhiRel->SaveAs("PhiRelEarly.png");
 
-	// 2D Δφ vs multiplicity
+	// Δφ vs multiplicity
 	TCanvas *cPhiRel2D = new TCanvas();
 	hPhiRelVsMultEarly->Draw("COLZ");
 	cPhiRel2D->SaveAs("PhiRelVsMultEarly.png");
 
-	// Ψ₂ vs N_partons 
+	// Ψ₂ vs multiplicity
 	TCanvas* cPsi2VsN = new TCanvas();
 	hPsi2VsMultEarly->Draw("COLZ");
 	cPsi2VsN->SaveAs("Psi2VsMultEarly.png");
 	*/
 
-	// Eccentricity vs time
+	// Eccentricity vs tau distribution
 	//TCanvas* cEccT = new TCanvas();
 	//hEccVsTau->GetYaxis()->SetRangeUser(0, 10);  // Set Y-axis range from 0 to 0.5
 	//hEccVsTau->Draw("COLZ");
 	//cEccT->SaveAs("EccentricityVsTau.png");
 
+    // RMS Eccentricity vs tau
 	TCanvas* cEccRMS = new TCanvas("cEccRMS", "RMS Eccentricity vs Tau");
 	hEccRMSvsTau->SetLineWidth(2);
 	hEccRMSvsTau->Draw("HIST");
 	cEccRMS->SaveAs("EccentricityRMSvsTau.png");
 
+    // v2 distribution at tau tauTarget
 	TCanvas* cV2 = new TCanvas("cV2", "v2 at tau = 2 fm/c");
 	hV2Early->SetLineWidth(2);
 	hV2Early->SetLineColor(kBlue);
 	hV2Early->Draw();
 	cV2->SaveAs("V2Early.png");
+
+    // RMS v2 vs tau
+    TCanvas* cV2RMS = new TCanvas("cV2RMS", "RMS v2 vs Tau");
+    hV2RMSvsTau->SetLineWidth(2);
+    hV2RMSvsTau->Draw("HIST");
+    cV2RMS->SaveAs("V2RMSvsTau.png");
+
+    // v2 vs eccentricity at tau tauTarget scatterplot
+    TCanvas* cV2vsEcc = new TCanvas("cV2vsEcc", "v2 vs Eccentricity");
+    hV2vsEcc->Draw("COLZ");
+    cV2vsEcc->SaveAs("V2vsEcc.png");
 
 	inFile->Close();
 	delete tree;
