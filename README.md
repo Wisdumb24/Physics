@@ -1,2 +1,2 @@
-Work under test.C in Eccentricity-main folder
-make sure to download tracktree.h and tracktree.C beforehand
+Main work under test.C in Eccentricity-main folder.
+Make sure to download trackTree.h, trackTree.C, and coordinaTetools.h beforehand
