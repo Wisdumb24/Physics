@@ -643,55 +643,55 @@ void test()
 	// get number of entries
 	//cout << "Number of entries in Ψ₂ distribution (early): " << hPsi2Early->GetEntries() << std::endl;
     //std::cout << mid << " " << "Central bin content = "<< count  << std::endl;
-	cE1->SaveAs("Psi2Early.png");
+	cE1->SaveAs("David_Plots/Psi2Early.png");
 
 	// Δφ distribution
 	TCanvas *cPhiRel = new TCanvas();
 	hPhiRelEarly->SetLineWidth(2);
 	hPhiRelEarly->SetLineColor(kBlue);
 	hPhiRelEarly->Draw();
-	cPhiRel->SaveAs("PhiRelEarly.png");
+	cPhiRel->SaveAs("David_Plots/PhiRelEarly.png");
 
 	// Δφ vs multiplicity
 	TCanvas *cPhiRel2D = new TCanvas();
 	hPhiRelVsMultEarly->Draw("COLZ");
-	cPhiRel2D->SaveAs("PhiRelVsMultEarly.png");
+	cPhiRel2D->SaveAs("David_Plots/PhiRelVsMultEarly.png");
 
 	// Ψ₂ vs multiplicity
 	TCanvas* cPsi2VsN = new TCanvas();
 	hPsi2VsMultEarly->Draw("COLZ");
-	cPsi2VsN->SaveAs("Psi2VsMultEarly.png");
+	cPsi2VsN->SaveAs("David_Plots/Psi2VsMultEarly.png");
 	*/
 
 	// Eccentricity vs tau distribution
 	//TCanvas* cEccT = new TCanvas();
 	//hEccVsTau->GetYaxis()->SetRangeUser(0, 10);  // Set Y-axis range from 0 to 0.5
 	//hEccVsTau->Draw("COLZ");
-	//cEccT->SaveAs("EccentricityVsTau.png");
+	//cEccT->SaveAs("David_Plots/EccentricityVsTau.png");
 
     // RMS Eccentricity vs tau
 	TCanvas* cEccRMS = new TCanvas("cEccRMS", "RMS Eccentricity vs Tau");
 	hEccRMSvsTau->SetLineWidth(2);
 	hEccRMSvsTau->Draw("HIST");
-	cEccRMS->SaveAs("EccentricityRMSvsTau.png");
+	cEccRMS->SaveAs("David_Plots/EccentricityRMSvsTau.png");
 
     // v2 distribution at tau tauTarget
 	TCanvas* cV2 = new TCanvas("cV2", "v2 at tau = 2 fm/c");
 	hV2Early->SetLineWidth(2);
 	hV2Early->SetLineColor(kBlue);
 	hV2Early->Draw();
-	cV2->SaveAs("V2Early.png");
+	cV2->SaveAs("David_Plots/V2Early.png");
 
     // RMS v2 vs tau
     TCanvas* cV2RMS = new TCanvas("cV2RMS", "RMS v2 vs Tau");
     hV2RMSvsTau->SetLineWidth(2);
     hV2RMSvsTau->Draw("HIST");
-    cV2RMS->SaveAs("V2RMSvsTau.png");
+    cV2RMS->SaveAs("David_Plots/V2RMSvsTau.png");
 
     // v2 vs eccentricity at tau tauTarget scatterplot
     TCanvas* cV2vsEcc = new TCanvas("cV2vsEcc", "v2 vs Eccentricity");
     hV2vsEcc->Draw("COLZ");
-    cV2vsEcc->SaveAs("V2vsEcc.png");
+    cV2vsEcc->SaveAs("David_Plots/V2vsEcc.png");
 
 	inFile->Close();
 	delete tree;
