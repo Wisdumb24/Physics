@@ -441,7 +441,6 @@ void test()
     		p.tau = (p.t * p.t > z2) ? sqrt(p.t * p.t - z2) : 0.0;
 		}
 
-
 		groupByJet(partons, partonsByJet);
 		fillEccVsTau(hEccVsTau, partonsByJet, partons);
 
